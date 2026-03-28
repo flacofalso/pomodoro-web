@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pomodoro Pet 🐾</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f0f1a;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    overflow: hidden;
+  }
+
+  /* Background dots */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 30px 30px;
+    pointer-events: none;
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    padding: 32px 20px;
+    width: 100%;
+    max-width: 420px;
+  }
+
+  /* Title */
+  .title {
+    font-size: 13px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+  }
+
+  /* Pet canvas */
+  .pet-container {
+    position: relative;
+    width: 200px;
+    height: 200px;
+  }
+
+  #petCanvas {
+    width: 200px;
+    height: 200px;
+    image-rendering: pixelated;
+  }
+
+  /* Status badge */
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    transition: all 0.4s ease;
+  }
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    animation: pulse-dot 2s infinite;
+  }
+  @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .state-working  .status-badge { background: rgba(92,219,149,0.15); border: 1px solid rgba(92,219,149,0.4); color: #5CDB95; }
+  .state-working  .status-dot   { background: #5CDB95; }
+  .state-tired    .status-badge { background: rgba(232,69,69,0.15);  border: 1px solid rgba(232,69,69,0.4);  color: #E84545; }
+  .state-tired    .status-dot   { background: #E84545; }
+  .state-resting  .status-badge { background: rgba(106,142,174,0.15);border: 1px solid rgba(106,142,174,0.4);color: #6A8EAE; }
+  .state-resting  .status-dot   { background: #6A8EAE; }
+  .state-celebrating .status-badge { background: rgba(255,209,102,0.15); border: 1px solid rgba(255,209,102,0.4); color: #FFD166; }
+  .state-celebrating .status-dot   { background: #FFD166; }
+
+  /* Timer display */
+  .timer-display {
+    text-align: center;
+  }
+  .timer-time {
+    font-size: 64px;
+    font-weight: 200;
+    letter-spacing: -2px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.4s;
+  }
+  .timer-phase {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+    margin-top: 6px;
+  }
+
+  /* Inactivity bar */
+  .inact-wrap {
+    width: 200px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .inact-wrap.visible { opacity: 1; }
+  .inact-label {
+    font-size: 10px;
+    color: rgba(255,255,255,0.35);
+    text-align: center;
+    margin-bottom: 5px;
+    letter-spacing: 1px;
+  }
+  .inact-track {
+    height: 3px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .inact-fill {
+    height: 100%;
+    width: 0%;
+    background: #6A8EAE;
+    border-radius: 2px;
+    transition: width 0.3s linear;
+  }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 50px;
+    padding: 10px 18px;
+  }
+
+  .ctrl-btn {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    color: #fff;
+    font-size: 16px;
+    width: 38px; height: 38px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .ctrl-btn:hover { background: rgba(255,255,255,0.18); }
+  .ctrl-btn:active { transform: scale(0.95); }
+  .ctrl-btn:disabled { opacity: 0.3; cursor: default; }
+
+  .ctrl-sep {
+    width: 1px; height: 24px;
+    background: rgba(255,255,255,0.1);
+    margin: 0 4px;
+  }
+
+  /* Settings panel */
+  .settings-panel {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 20px 24px;
+    width: 100%;
+    display: none;
+  }
+  .settings-panel.open { display: block; }
+  .settings-title {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 16px;
+  }
+  .settings-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .settings-row label {
+    font-size: 13px;
+    color: rgba(255,255,255,0.7);
+  }
+  .settings-row input[type=range] {
+    width: 120px;
+    accent-color: #5C7AEA;
+  }
+  .settings-val {
+    font-size: 13px;
+    color: #fff;
+    min-width: 40px;
+    text-align: right;
+  }
+  .settings-save {
+    width: 100%;
+    margin-top: 8px;
+    padding: 9px;
+    background: #5C7AEA;
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .settings-save:hover { background: #4a69d4; }
+
+  /* Notification toast */
+  .toast {
+    position: fixed;
+    top: 20px;
+    left: 50%; transform: translateX(-50%) translateY(-80px);
+    background: rgba(20,20,35,0.95);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: 13px;
+    color: #fff;
+    transition: transform 0.3s ease;
+    z-index: 100;
+    white-space: nowrap;
+    backdrop-filter: blur(10px);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* Permission banner */
+  .perm-banner {
+    font-size: 11px;
+    color: rgba(255,255,255,0.25);
+    text-align: center;
+    max-width: 280px;
+    line-height: 1.6;
+  }
+  .perm-banner button {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.5);
+    font-size: 11px;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <div class="title">Pomodoro Pet</div>
+
+  <div class="pet-container">
+    <canvas id="petCanvas" width="200" height="200"></canvas>
+  </div>
+
+  <div class="status-badge" id="statusBadge">
+    <div class="status-dot"></div>
+    <span id="statusText">Listo para trabajar</span>
+  </div>
+
+  <div class="inact-wrap" id="inactWrap">
+    <div class="inact-label">Detectando descanso...</div>
+    <div class="inact-track"><div class="inact-fill" id="inactFill"></div></div>
+  </div>
+
+  <div class="timer-display">
+    <div class="timer-time" id="timerTime">25:00</div>
+    <div class="timer-phase" id="timerPhase">Sesión de trabajo</div>
+  </div>
+
+  <div class="controls">
+    <button class="ctrl-btn" id="btnPlay" title="Iniciar">▶</button>
+    <button class="ctrl-btn" id="btnPause" title="Pausar" disabled>⏸</button>
+    <button class="ctrl-btn" id="btnReset" title="Reiniciar">↺</button>
+    <div class="ctrl-sep"></div>
+    <button class="ctrl-btn" id="btnConfig" title="Ajustes">⚙</button>
+  </div>
+
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-title">Configuración</div>
+    <div class="settings-row">
+      <label>⏱ Trabajo</label>
+      <input type="range" id="slWork" min="1" max="60" value="25">
+      <span class="settings-val" id="valWork">25 min</span>
+    </div>
+    <div class="settings-row">
+      <label>☕ Pausa</label>
+      <input type="range" id="slBreak" min="1" max="30" value="5">
+      <span class="settings-val" id="valBreak">5 min</span>
+    </div>
+    <button class="settings-save" id="btnSave">Guardar</button>
+  </div>
+
+  <div class="perm-banner" id="permBanner">
+    <button onclick="requestNotifPerm()">Activar notificaciones del sistema</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────
+const STATES = {
+  working:     { label: 'Trabajando',   fps: 160 },
+  tired:       { label: 'Cansada',      fps: 200 },
+  resting:     { label: 'Descansando',  fps: 200 },
+  celebrating: { label: 'Celebrando',   fps: 160 },
+};
+const INACTIVITY_THRESHOLD = 4000; // ms
+const FRAME_SIZE = 200;
+
+// ── State ─────────────────────────────────────────────────────────────────
+let workMins = 25, breakMins = 5;
+let remaining = workMins * 60;
+let isBreak = false, running = false;
+let timerInterval = null;
+let currentState = 'working';
+let lastActivity = Date.now();
+let isResting = false;
+let inactInterval = null, inactProgress = 0;
+
+// ── Sprite sheets ─────────────────────────────────────────────────────────
+const sprites = {};
+const canvas = document.getElementById('petCanvas');
+const ctx = canvas.getContext('2d');
+let animFrame = 0, animCount = 1, animTimer = null;
+
+function loadSprites() {
+  const stateNames = ['working', 'tired', 'resting', 'celebrating'];
+  let loaded = 0;
+  stateNames.forEach(name => {
+    const img = new Image();
+    img.onload = () => {
+      sprites[name] = { img, frames: Math.round(img.width / FRAME_SIZE) };
+      loaded++;
+      if (loaded === stateNames.length) startAnim();
+    };
+    img.onerror = () => {
+      // Fallback placeholder
+      sprites[name] = { img: null, frames: 1 };
+      loaded++;
+      if (loaded === stateNames.length) startAnim();
+    };
+    img.src = `assets/${name}.png`;
+  });
+}
+
+function startAnim() {
+  setState('working');
+}
+
+function setAnimState(name) {
+  clearInterval(animTimer);
+  animFrame = 0;
+  if (!sprites[name]) return;
+  animCount = sprites[name].frames || 1;
+  drawFrame();
+  animTimer = setInterval(() => {
+    animFrame = (animFrame + 1) % animCount;
+    drawFrame();
+  }, STATES[name].fps);
+}
+
+function drawFrame() {
+  ctx.clearRect(0, 0, 200, 200);
+  const s = sprites[currentState];
+  if (!s || !s.img) {
+    drawPlaceholder();
+    return;
+  }
+  ctx.drawImage(s.img, animFrame * FRAME_SIZE, 0, FRAME_SIZE, FRAME_SIZE, 0, 0, 200, 200);
+}
+
+function drawPlaceholder() {
+  const colors = { working:'#5CDB95', tired:'#E84545', resting:'#6A8EAE', celebrating:'#FFD166' };
+  ctx.beginPath();
+  ctx.arc(100, 100, 70, 0, Math.PI * 2);
+  ctx.fillStyle = colors[currentState] || '#888';
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = '40px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const emojis = { working:'💻', tired:'😩', resting:'😴', celebrating:'🎉' };
+  ctx.fillText(emojis[currentState] || '🐶', 100, 100);
+}
+
+// ── App state machine ─────────────────────────────────────────────────────
+function setState(name) {
+  currentState = name;
+  document.getElementById('app').className = `app state-${name}`;
+  document.getElementById('statusText').textContent = STATES[name].label;
+  setAnimState(name);
+
+  // Inactivity bar
+  const inactWrap = document.getElementById('inactWrap');
+  if (name === 'resting') {
+    inactWrap.classList.add('visible');
+    startInactBar();
+  } else {
+    inactWrap.classList.remove('visible');
+    stopInactBar();
+  }
+}
+
+// ── Timer ─────────────────────────────────────────────────────────────────
+function fmt(s) {
+  const m = Math.floor(Math.max(0,s)/60);
+  const sec = Math.max(0,s)%60;
+  return String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+}
+
+function updateDisplay() {
+  document.getElementById('timerTime').textContent = fmt(remaining);
+  document.getElementById('timerPhase').textContent = isBreak ? 'Tiempo de pausa' : 'Sesión de trabajo';
+}
+
+function startTimer() {
+  if (running) return;
+  running = true;
+  document.getElementById('btnPlay').disabled = true;
+  document.getElementById('btnPause').disabled = false;
+  timerInterval = setInterval(() => {
+    remaining--;
+    updateDisplay();
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      running = false;
+      if (!isBreak) onWorkFinished();
+      else onBreakFinished();
+    }
+  }, 1000);
+  if (!isBreak) {
+    toast('¡Pomodoro iniciado! 🍅', `${workMins} minutos de trabajo enfocado.`);
+    notify('¡Pomodoro iniciado! 🍅', `${workMins} minutos de trabajo enfocado.`);
+  }
+}
+
+function pauseTimer() {
+  clearInterval(timerInterval);
+  running = false;
+  document.getElementById('btnPlay').disabled = false;
+  document.getElementById('btnPause').disabled = true;
+  toast('Timer pausado ⏸', '');
+}
+
+function resetTimer() {
+  clearInterval(timerInterval);
+  running = false; isBreak = false;
+  remaining = workMins * 60;
+  updateDisplay();
+  stopActivityMonitor();
+  setState('working');
+  document.getElementById('btnPlay').disabled = false;
+  document.getElementById('btnPause').disabled = true;
+}
+
+function onWorkFinished() {
+  setState('tired');
+  isBreak = true;
+  remaining = breakMins * 60;
+  updateDisplay();
+  document.getElementById('btnPlay').disabled = true;
+  document.getElementById('btnPause').disabled = true;
+  toast('¡Tiempo de descanso! 😩', 'Aléjate del computador.');
+  notify('¡Tiempo de descanso! 😩', 'Tu mascota está agotada. Aléjate del computador.');
+  startActivityMonitor();
+  // Auto-start break timer
+  running = true;
+  timerInterval = setInterval(() => {
+    remaining--;
+    updateDisplay();
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      running = false;
+      onBreakFinished();
+    }
+  }, 1000);
+}
+
+function onBreakFinished() {
+  stopActivityMonitor();
+  if (currentState === 'resting') {
+    setState('celebrating');
+    toast('¡Excelente pausa! 🎉', 'Descansaste de verdad.');
+    notify('¡Excelente pausa! 🎉', 'Descansaste de verdad. ¡A trabajar con energía!');
+    setTimeout(() => {
+      setState('working');
+      isBreak = false;
+      remaining = workMins * 60;
+      updateDisplay();
+      document.getElementById('btnPlay').disabled = false;
+      document.getElementById('btnPause').disabled = true;
+    }, 4000);
+  } else {
+    setState('working');
+    toast('Pausa terminada 😔', 'No descansaste bien…');
+    notify('Pausa terminada 😔', 'Intenta alejarte en la próxima pausa.');
+    isBreak = false;
+    remaining = workMins * 60;
+    updateDisplay();
+    document.getElementById('btnPlay').disabled = false;
+    document.getElementById('btnPause').disabled = true;
+  }
+}
+
+// ── Activity monitor ──────────────────────────────────────────────────────
+let activityMonitorInterval = null;
+
+function startActivityMonitor() {
+  lastActivity = Date.now();
+  isResting = false;
+  document.addEventListener('mousemove', onActivity);
+  document.addEventListener('keydown', onActivity);
+  document.addEventListener('click', onActivity);
+  document.addEventListener('touchstart', onActivity);
+
+  activityMonitorInterval = setInterval(() => {
+    const elapsed = Date.now() - lastActivity;
+    if (elapsed < INACTIVITY_THRESHOLD) {
+      if (isResting) {
+        isResting = false;
+        if (currentState === 'resting') {
+          setState('tired');
+          toast('¡Hey, necesito descansar! 😩', 'Aléjate para que pueda recuperarme.');
+          notify('¡Hey, necesito descansar! 😩', 'Detecté actividad. Aléjate del computador.');
+        }
+      }
+    } else {
+      if (!isResting) {
+        isResting = true;
+        if (currentState === 'tired') {
+          setState('resting');
+          toast('Descansando 😴', 'Detecté que te alejaste. ¡Sigue así!');
+          notify('Descansando 😴', 'Bien, detecté que te alejaste.');
+        }
+      }
+    }
+  }, 500);
+}
+
+function stopActivityMonitor() {
+  clearInterval(activityMonitorInterval);
+  document.removeEventListener('mousemove', onActivity);
+  document.removeEventListener('keydown', onActivity);
+  document.removeEventListener('click', onActivity);
+  document.removeEventListener('touchstart', onActivity);
+}
+
+function onActivity() {
+  lastActivity = Date.now();
+}
+
+// ── Inactivity bar ────────────────────────────────────────────────────────
+function startInactBar() {
+  inactProgress = 0;
+  document.getElementById('inactFill').style.width = '0%';
+  stopInactBar();
+  inactInterval = setInterval(() => {
+    inactProgress = Math.min(100, inactProgress + 2);
+    document.getElementById('inactFill').style.width = inactProgress + '%';
+    if (inactProgress >= 100) stopInactBar();
+  }, 80);
+}
+function stopInactBar() {
+  clearInterval(inactInterval);
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────
+let toastTimeout = null;
+function toast(title, msg) {
+  const t = document.getElementById('toast');
+  t.textContent = title + (msg ? ' ' + msg : '');
+  t.classList.add('show');
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function notify(title, body) {
+  if (Notification.permission === 'granted') {
+    new Notification(title, { body, icon: 'assets/working.png' });
+  }
+}
+
+function requestNotifPerm() {
+  Notification.requestPermission().then(p => {
+    if (p === 'granted') {
+      document.getElementById('permBanner').style.display = 'none';
+      toast('Notificaciones activadas ✓', '');
+    }
+  });
+}
+
+// Hide banner if already granted
+if (Notification.permission === 'granted') {
+  document.getElementById('permBanner').style.display = 'none';
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────
+document.getElementById('btnConfig').addEventListener('click', () => {
+  document.getElementById('settingsPanel').classList.toggle('open');
+});
+
+document.getElementById('slWork').addEventListener('input', e => {
+  document.getElementById('valWork').textContent = e.target.value + ' min';
+});
+document.getElementById('slBreak').addEventListener('input', e => {
+  document.getElementById('valBreak').textContent = e.target.value + ' min';
+});
+
+document.getElementById('btnSave').addEventListener('click', () => {
+  workMins  = parseInt(document.getElementById('slWork').value);
+  breakMins = parseInt(document.getElementById('slBreak').value);
+  if (!running) {
+    remaining = workMins * 60;
+    updateDisplay();
+  }
+  document.getElementById('settingsPanel').classList.remove('open');
+  toast('Configuración guardada ✓', '');
+});
+
+// ── Button wiring ─────────────────────────────────────────────────────────
+document.getElementById('btnPlay').addEventListener('click', startTimer);
+document.getElementById('btnPause').addEventListener('click', pauseTimer);
+document.getElementById('btnReset').addEventListener('click', resetTimer);
+
+// ── Init ──────────────────────────────────────────────────────────────────
+loadSprites();
+updateDisplay();
+</script>
+</body>
+</html>
