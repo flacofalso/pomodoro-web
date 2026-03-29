@@ -31,8 +31,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 24px;
-    padding: 32px 20px;
+    gap: 16px;
+    padding: 20px 20px;
     width: 100%;
     max-width: 420px;
   }
@@ -49,12 +49,19 @@
     display: none;
   }
 
-  /* Canvas shows the pet with transparent bg */
-  #petCanvas {
-    width: 220px;
-    height: 220px;
-    border-radius: 50%;
+  .pet-frame {
+    width: 240px; height: 240px;
+    border-radius: 40px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; transition: background 0.5s;
   }
+  .state-working  .pet-frame { background: rgba(92,219,149,0.08);  border-color: rgba(92,219,149,0.15); }
+  .state-tired    .pet-frame { background: rgba(232,69,69,0.08);   border-color: rgba(232,69,69,0.15); }
+  .state-resting  .pet-frame { background: rgba(106,142,174,0.08); border-color: rgba(106,142,174,0.15); }
+  .state-celebrating .pet-frame { background: rgba(255,209,102,0.08); border-color: rgba(255,209,102,0.15); }
+  #petCanvas { width: 220px; height: 220px; }
 
   /* Status badge */
   .status-badge {
@@ -232,7 +239,9 @@
 <div class="app" id="app">
   <div class="title">Pomodoro Pet</div>
 
-  <canvas id="petCanvas" width="220" height="220"></canvas>
+  <div class="pet-frame">
+    <canvas id="petCanvas" width="220" height="220"></canvas>
+  </div>
 
   <div class="status-badge" id="statusBadge">
     <div class="status-dot"></div>
