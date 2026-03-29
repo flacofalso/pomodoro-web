@@ -50,19 +50,20 @@ body::before {
   width: 260px;
   height: 260px;
   border-radius: 36px;
-  background: #13131f;
-  border: 1.5px solid rgba(255,255,255,0.08);
+  background: #f0ede8;
+  border: 3px solid rgba(255,255,255,0.15);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  transition: border-color 0.5s, background 0.5s;
+  transition: border-color 0.5s, box-shadow 0.5s;
   flex-shrink: 0;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
 }
-.state-working     .pet-frame { border-color: rgba(92,219,149,0.35);  background: #0f1a14; }
-.state-tired       .pet-frame { border-color: rgba(232,69,69,0.35);   background: #1a0f0f; }
-.state-resting     .pet-frame { border-color: rgba(106,142,174,0.35); background: #0f1219; }
-.state-celebrating .pet-frame { border-color: rgba(255,209,102,0.35); background: #1a190f; }
+.state-working     .pet-frame { border-color: rgba(92,219,149,0.6);  box-shadow: 0 8px 32px rgba(92,219,149,0.2); }
+.state-tired       .pet-frame { border-color: rgba(232,69,69,0.6);   box-shadow: 0 8px 32px rgba(232,69,69,0.2); }
+.state-resting     .pet-frame { border-color: rgba(106,142,174,0.6); box-shadow: 0 8px 32px rgba(106,142,174,0.2); }
+.state-celebrating .pet-frame { border-color: rgba(255,209,102,0.6); box-shadow: 0 8px 32px rgba(255,209,102,0.3); }
 
 .pet-frame video,
 .pet-frame img.pet-img {
