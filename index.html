@@ -5,240 +5,190 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pomodoro Pet 🐾</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #0f0f1a;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    overflow: hidden;
-  }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0f0f1a;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  overflow-x: hidden;
+}
 
-  body::before {
-    content: '';
-    position: fixed; inset: 0;
-    background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
-    background-size: 30px 30px;
-    pointer-events: none;
-  }
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 30px 30px;
+  pointer-events: none;
+}
 
-  .app {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-    padding: 20px 20px;
-    width: 100%;
-    max-width: 420px;
-  }
+.app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 20px;
+  width: 100%;
+  max-width: 420px;
+}
 
-  .title {
-    font-size: 13px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.3);
-  }
+.title {
+  font-size: 12px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+}
 
-  /* Hidden video elements */
-  #videoContainer {
-    display: none;
-  }
+/* ── Pet frame ─────────────────────────────────────────────── */
+.pet-frame {
+  position: relative;
+  width: 260px;
+  height: 260px;
+  border-radius: 36px;
+  background: #13131f;
+  border: 1.5px solid rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: border-color 0.5s, background 0.5s;
+  flex-shrink: 0;
+}
+.state-working     .pet-frame { border-color: rgba(92,219,149,0.35);  background: #0f1a14; }
+.state-tired       .pet-frame { border-color: rgba(232,69,69,0.35);   background: #1a0f0f; }
+.state-resting     .pet-frame { border-color: rgba(106,142,174,0.35); background: #0f1219; }
+.state-celebrating .pet-frame { border-color: rgba(255,209,102,0.35); background: #1a190f; }
 
-  /* Pet wrapper with soft background pill */
-  .pet-frame {
-    position: relative;
-    width: 240px;
-    height: 240px;
-    border-radius: 40px;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.08);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    transition: background 0.5s;
-  }
-  .state-working  .pet-frame { background: rgba(92,219,149,0.08);  border-color: rgba(92,219,149,0.15); }
-  .state-tired    .pet-frame { background: rgba(232,69,69,0.08);   border-color: rgba(232,69,69,0.15); }
-  .state-resting  .pet-frame { background: rgba(106,142,174,0.08); border-color: rgba(106,142,174,0.15); }
-  .state-celebrating .pet-frame { background: rgba(255,209,102,0.08); border-color: rgba(255,209,102,0.15); }
+.pet-frame video,
+.pet-frame img.pet-img {
+  width: 220px;
+  height: 220px;
+  object-fit: contain;
+}
+.pet-frame img.pet-img { display: none; }
 
-  #petCanvas {
-    width: 220px;
-    height: 220px;
-  }
+.tap-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 8px;
+  background: rgba(0,0,0,0.55);
+  border-radius: 36px;
+  cursor: pointer;
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
+  letter-spacing: 0.5px;
+}
+.tap-overlay .tap-icon { font-size: 36px; }
+.tap-overlay.hidden { display: none; }
 
-  /* Status badge */
-  .status-badge {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 16px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: 0.5px;
-    transition: all 0.4s ease;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.05);
-  }
-  .status-dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    animation: pulse-dot 2s infinite;
-  }
-  @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }
+/* ── Status badge ──────────────────────────────────────────── */
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  transition: all 0.4s ease;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.05);
+}
+.status-dot { width: 7px; height: 7px; border-radius: 50%; animation: pdot 2s infinite; }
+@keyframes pdot { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-  .state-working  .status-badge { background: rgba(92,219,149,0.15); border-color: rgba(92,219,149,0.4); color: #5CDB95; }
-  .state-working  .status-dot   { background: #5CDB95; }
-  .state-tired    .status-badge { background: rgba(232,69,69,0.15);  border-color: rgba(232,69,69,0.4);  color: #E84545; }
-  .state-tired    .status-dot   { background: #E84545; }
-  .state-resting  .status-badge { background: rgba(106,142,174,0.15);border-color: rgba(106,142,174,0.4);color: #6A8EAE; }
-  .state-resting  .status-dot   { background: #6A8EAE; }
-  .state-celebrating .status-badge { background: rgba(255,209,102,0.15); border-color: rgba(255,209,102,0.4); color: #FFD166; }
-  .state-celebrating .status-dot   { background: #FFD166; }
+.state-working     .status-badge { background: rgba(92,219,149,0.15); border-color: rgba(92,219,149,0.4); color: #5CDB95; }
+.state-working     .status-dot   { background: #5CDB95; }
+.state-tired       .status-badge { background: rgba(232,69,69,0.15);  border-color: rgba(232,69,69,0.4);  color: #E84545; }
+.state-tired       .status-dot   { background: #E84545; }
+.state-resting     .status-badge { background: rgba(106,142,174,0.15);border-color: rgba(106,142,174,0.4);color: #6A8EAE; }
+.state-resting     .status-dot   { background: #6A8EAE; }
+.state-celebrating .status-badge { background: rgba(255,209,102,0.15);border-color: rgba(255,209,102,0.4);color: #FFD166; }
+.state-celebrating .status-dot   { background: #FFD166; }
 
-  /* Timer */
-  .timer-display { text-align: center; }
-  .timer-time {
-    font-size: 64px;
-    font-weight: 200;
-    letter-spacing: -2px;
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-  }
-  .timer-phase {
-    font-size: 11px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.3);
-    margin-top: 6px;
-  }
+/* ── Inactivity bar ────────────────────────────────────────── */
+.inact-wrap { width: 200px; opacity: 0; transition: opacity 0.3s; }
+.inact-wrap.visible { opacity: 1; }
+.inact-label { font-size: 10px; color: rgba(255,255,255,0.3); text-align: center; margin-bottom: 5px; letter-spacing: 1px; }
+.inact-track { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+.inact-fill  { height: 100%; width: 0%; background: #6A8EAE; border-radius: 2px; transition: width 0.3s linear; }
 
-  /* Inactivity bar */
-  .inact-wrap {
-    width: 200px;
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-  .inact-wrap.visible { opacity: 1; }
-  .inact-label {
-    font-size: 10px;
-    color: rgba(255,255,255,0.35);
-    text-align: center;
-    margin-bottom: 5px;
-    letter-spacing: 1px;
-  }
-  .inact-track {
-    height: 3px;
-    background: rgba(255,255,255,0.08);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-  .inact-fill {
-    height: 100%;
-    width: 0%;
-    background: #6A8EAE;
-    border-radius: 2px;
-    transition: width 0.3s linear;
-  }
+/* ── Timer ─────────────────────────────────────────────────── */
+.timer-display { text-align: center; }
+.timer-time  { font-size: 60px; font-weight: 200; letter-spacing: -2px; line-height: 1; font-variant-numeric: tabular-nums; }
+.timer-phase { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.3); margin-top: 5px; }
 
-  /* Controls */
-  .controls {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 50px;
-    padding: 10px 18px;
-  }
-  .ctrl-btn {
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 10px;
-    color: #fff;
-    font-size: 16px;
-    width: 38px; height: 38px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.15s;
-  }
-  .ctrl-btn:hover { background: rgba(255,255,255,0.18); }
-  .ctrl-btn:active { transform: scale(0.95); }
-  .ctrl-btn:disabled { opacity: 0.3; cursor: default; }
-  .ctrl-sep { width: 1px; height: 24px; background: rgba(255,255,255,0.1); margin: 0 4px; }
+/* ── Controls ──────────────────────────────────────────────── */
+.controls {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 50px;
+  padding: 9px 16px;
+}
+.ctrl-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  color: #fff; font-size: 15px;
+  width: 36px; height: 36px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.ctrl-btn:hover  { background: rgba(255,255,255,0.18); }
+.ctrl-btn:active { transform: scale(0.95); }
+.ctrl-btn:disabled { opacity: 0.3; cursor: default; }
+.ctrl-sep { width: 1px; height: 22px; background: rgba(255,255,255,0.1); margin: 0 2px; }
 
-  /* Settings */
-  .settings-panel {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 16px;
-    padding: 16px 20px;
-    width: 100%;
-    display: none;
-  }
-  .settings-panel.open { display: block; }
-  .settings-title {
-    font-size: 11px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.3);
-    margin-bottom: 12px;
-  }
-  .settings-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-  }
-  .settings-row label { font-size: 13px; color: rgba(255,255,255,0.7); }
-  .settings-row input[type=range] { width: 110px; accent-color: #5C7AEA; }
-  .settings-val { font-size: 13px; color: #fff; min-width: 40px; text-align: right; }
-  .settings-save {
-    width: 100%; margin-top: 6px; padding: 8px;
-    background: #5C7AEA; border: none; border-radius: 10px;
-    color: #fff; font-size: 13px; cursor: pointer;
-  }
-  .settings-save:hover { background: #4a69d4; }
+/* ── Settings ──────────────────────────────────────────────── */
+.settings-panel {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 16px 20px;
+  width: 100%;
+  display: none;
+}
+.settings-panel.open { display: block; }
+.settings-title { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.3); margin-bottom: 12px; }
+.settings-row   { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.settings-row label { font-size: 13px; color: rgba(255,255,255,0.7); }
+.settings-row input[type=range] { width: 110px; accent-color: #5C7AEA; }
+.settings-val { font-size: 13px; color: #fff; min-width: 42px; text-align: right; }
+.settings-save {
+  width: 100%; margin-top: 6px; padding: 8px;
+  background: #5C7AEA; border: none; border-radius: 10px;
+  color: #fff; font-size: 13px; cursor: pointer;
+}
+.settings-save:hover { background: #4a69d4; }
 
-  /* Toast */
-  .toast {
-    position: fixed;
-    top: 20px;
-    left: 50%; transform: translateX(-50%) translateY(-80px);
-    background: rgba(20,20,35,0.95);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 12px;
-    padding: 12px 20px;
-    font-size: 13px;
-    color: #fff;
-    transition: transform 0.3s ease;
-    z-index: 100;
-    white-space: nowrap;
-  }
-  .toast.show { transform: translateX(-50%) translateY(0); }
+/* ── Toast ─────────────────────────────────────────────────── */
+.toast {
+  position: fixed; top: 16px;
+  left: 50%; transform: translateX(-50%) translateY(-80px);
+  background: rgba(20,20,35,0.95);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 12px; padding: 11px 18px;
+  font-size: 13px; color: #fff;
+  transition: transform 0.3s ease;
+  z-index: 100; white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
 
-  .perm-banner {
-    font-size: 11px;
-    color: rgba(255,255,255,0.25);
-    text-align: center;
-  }
-  .perm-banner button {
-    background: none; border: none;
-    color: rgba(255,255,255,0.4);
-    font-size: 11px; cursor: pointer; text-decoration: underline;
-  }
+.perm-banner { font-size: 11px; color: rgba(255,255,255,0.25); text-align: center; }
+.perm-banner button { background: none; border: none; color: rgba(255,255,255,0.4); font-size: 11px; cursor: pointer; text-decoration: underline; }
 </style>
 </head>
 <body>
 
-<!-- Videos loaded dynamically -->
+<!-- Videos loaded on demand -->
 
 <div class="app" id="app">
   <div class="title">Pomodoro Pet</div>
@@ -263,14 +213,14 @@
   </div>
 
   <div class="timer-display">
-    <div class="timer-time" id="timerTime">25:00</div>
+    <div class="timer-time"  id="timerTime">25:00</div>
     <div class="timer-phase" id="timerPhase">Sesión de trabajo</div>
   </div>
 
   <div class="controls">
-    <button class="ctrl-btn" id="btnPlay" title="Iniciar">▶</button>
-    <button class="ctrl-btn" id="btnPause" title="Pausar" disabled>⏸</button>
-    <button class="ctrl-btn" id="btnReset" title="Reiniciar">↺</button>
+    <button class="ctrl-btn" id="btnPlay"   title="Iniciar">▶</button>
+    <button class="ctrl-btn" id="btnPause"  title="Pausar"   disabled>⏸</button>
+    <button class="ctrl-btn" id="btnReset"  title="Reiniciar">↺</button>
     <div class="ctrl-sep"></div>
     <button class="ctrl-btn" id="btnConfig" title="Ajustes">⚙</button>
   </div>
@@ -298,102 +248,68 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ── State labels ───────────────────────────────────────────────────────────
-const STATE_LABELS = {
-  working:     'Trabajando',
-  tired:       'Cansada',
-  resting:     'Descansando',
-  celebrating: 'Celebrando',
-};
+// ── Constants ─────────────────────────────────────────────────────────────
+const LABELS = { working:'Trabajando', tired:'Cansada', resting:'Descansando', celebrating:'Celebrando' };
+const INACT_MS = 4000;
 
-// ── Video / image renderer ────────────────────────────────────────────────
-const petVideo = document.getElementById('petVideo');
-const petImg   = document.getElementById('petImg');
+// ── Elements ──────────────────────────────────────────────────────────────
+const petVideo   = document.getElementById('petVideo');
+const petImg     = document.getElementById('petImg');
 const tapOverlay = document.getElementById('tapOverlay');
-let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-let videoEnabled = false;
+const app        = document.getElementById('app');
 
-// PNG sprite frames for fallback (mobile)
-const SPRITE_FRAMES = { working: 12, tired: 12, resting: 12, celebrating: 12 };
-let spriteCanvas = null, spriteCtx = null, spriteSheet = null;
-let spriteFrame = 0, spriteTotal = 12, spriteInterval = null;
+// ── Video / image switcher ────────────────────────────────────────────────
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+let videoUnlocked = false;
 
-function initSpriteFallback(stateName) {
-  petVideo.style.display = 'none';
-  petImg.style.display = 'block';
-  petImg.src = `assets/${stateName}.png`;
-  // Animate through frames using background-position if needed
-  // For simplicity just show static image on mobile
-}
+function showState(name) {
+  app.className = `app state-${name}`;
+  document.getElementById('statusText').textContent = LABELS[name];
 
-function tryStartVideo(stateName) {
-  petVideo.src = `videos/${stateName}.mp4`;
+  petImg.src    = `assets/${name}.png`;
+  petVideo.src  = `videos/${name}.mp4`;
   petVideo.load();
-  const promise = petVideo.play();
-  if (promise !== undefined) {
-    promise.then(() => {
-      videoEnabled = true;
+
+  if (!isMobile || videoUnlocked) {
+    petVideo.play().then(() => {
       petVideo.style.display = 'block';
-      petImg.style.display = 'none';
+      petImg.style.display   = 'none';
       tapOverlay.classList.add('hidden');
     }).catch(() => {
-      // Autoplay blocked — show tap overlay on mobile
-      petVideo.style.display = 'block';
-      petImg.style.display = 'none';
+      petVideo.style.display = 'none';
+      petImg.style.display   = 'block';
       if (isMobile) tapOverlay.classList.remove('hidden');
     });
+  } else {
+    petVideo.style.display = 'none';
+    petImg.style.display   = 'block';
+    tapOverlay.classList.remove('hidden');
   }
+
+  // Inactivity bar
+  const inactWrap = document.getElementById('inactWrap');
+  if (name === 'resting') { inactWrap.classList.add('visible'); startInactBar(); }
+  else                    { inactWrap.classList.remove('visible'); stopInactBar(); }
 }
 
 function handleTap() {
+  videoUnlocked = true;
   tapOverlay.classList.add('hidden');
-  petVideo.play().then(() => { videoEnabled = true; }).catch(() => {});
+  petVideo.play().then(() => {
+    petVideo.style.display = 'block';
+    petImg.style.display   = 'none';
+  }).catch(() => {});
 }
 
-function switchVideo(stateName) {
-  petImg.src = `assets/${stateName}.png`;
-  petVideo.src = `videos/${stateName}.mp4`;
-  petVideo.load();
-  if (videoEnabled || !isMobile) {
-    petVideo.play().catch(() => {
-      if (isMobile) tapOverlay.classList.remove('hidden');
-    });
-  }
-}
-
-// ── App state machine ──────────────────────────────────────────────────────
-let currentState = 'working';
-
-function setState(name) {
-  currentState = name;
-  document.getElementById('app').className = `app state-${name}`;
-  document.getElementById('statusText').textContent = STATE_LABELS[name];
-  switchVideo(name);
-
-  const inactWrap = document.getElementById('inactWrap');
-  if (name === 'resting') {
-    inactWrap.classList.add('visible');
-    startInactBar();
-  } else {
-    inactWrap.classList.remove('visible');
-    stopInactBar();
-  }
-}
-
-// ── Timer ──────────────────────────────────────────────────────────────────
+// ── Timer ─────────────────────────────────────────────────────────────────
 let workMins = 25, breakMins = 5;
-let remaining = workMins * 60;
-let isBreak = false, running = false;
-let timerInterval = null;
+let remaining = 25 * 60, isBreak = false, running = false;
+let timerInterval = null, currentState = 'working';
 
-function fmt(s) {
-  const m = Math.floor(Math.max(0,s)/60);
-  const sec = Math.max(0,s)%60;
-  return String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
-}
+const fmt = s => `${String(Math.floor(Math.max(0,s)/60)).padStart(2,'0')}:${String(Math.max(0,s)%60).padStart(2,'0')}`;
 
 function updateDisplay() {
-  document.getElementById('timerTime').textContent = fmt(remaining);
+  document.getElementById('timerTime').textContent  = fmt(remaining);
   document.getElementById('timerPhase').textContent = isBreak ? 'Tiempo de pausa' : 'Sesión de trabajo';
 }
 
@@ -405,104 +321,83 @@ function startTimer() {
   timerInterval = setInterval(() => {
     remaining--;
     updateDisplay();
-    if (remaining <= 0) {
-      clearInterval(timerInterval);
-      running = false;
-      if (!isBreak) onWorkFinished(); else onBreakFinished();
-    }
+    if (remaining <= 0) { clearInterval(timerInterval); running = false; isBreak ? onBreakEnd() : onWorkEnd(); }
   }, 1000);
-  if (!isBreak) {
-    showToast(`¡Pomodoro iniciado! 🍅 ${workMins} min de trabajo enfocado.`);
-    notify('¡Pomodoro iniciado! 🍅', `${workMins} minutos de trabajo enfocado.`);
-  }
+  if (!isBreak) { showToast(`🍅 ¡Pomodoro iniciado! ${workMins} min`); pushNotif('¡Pomodoro iniciado! 🍅', `${workMins} minutos de trabajo enfocado.`); }
 }
 
 function pauseTimer() {
-  clearInterval(timerInterval);
-  running = false;
+  clearInterval(timerInterval); running = false;
   document.getElementById('btnPlay').disabled  = false;
   document.getElementById('btnPause').disabled = true;
-  showToast('Timer pausado ⏸');
+  showToast('⏸ Timer pausado');
 }
 
 function resetTimer() {
   clearInterval(timerInterval);
-  running = false; isBreak = false;
-  remaining = workMins * 60;
-  updateDisplay();
-  stopActivityMonitor();
-  setState('working');
+  running = false; isBreak = false; remaining = workMins * 60;
+  updateDisplay(); stopActivityMonitor();
+  currentState = 'working'; showState('working');
   document.getElementById('btnPlay').disabled  = false;
   document.getElementById('btnPause').disabled = true;
 }
 
-function onWorkFinished() {
-  setState('tired');
-  isBreak = true;
-  remaining = breakMins * 60;
-  updateDisplay();
+function onWorkEnd() {
+  currentState = 'tired'; showState('tired');
+  isBreak = true; remaining = breakMins * 60; updateDisplay();
   document.getElementById('btnPlay').disabled  = true;
   document.getElementById('btnPause').disabled = true;
-  showToast('¡Tiempo de descanso! 😩 Aléjate del computador.');
-  notify('¡Tiempo de descanso! 😩', 'Tu mascota está agotada. Aléjate del computador.');
+  showToast('😩 ¡Descansa! Aléjate del computador');
+  pushNotif('¡Tiempo de descanso! 😩', 'Tu mascota está agotada. Aléjate del computador.');
   startActivityMonitor();
   running = true;
   timerInterval = setInterval(() => {
-    remaining--;
-    updateDisplay();
-    if (remaining <= 0) {
-      clearInterval(timerInterval); running = false;
-      onBreakFinished();
-    }
+    remaining--; updateDisplay();
+    if (remaining <= 0) { clearInterval(timerInterval); running = false; onBreakEnd(); }
   }, 1000);
 }
 
-function onBreakFinished() {
+function onBreakEnd() {
   stopActivityMonitor();
   if (currentState === 'resting') {
-    setState('celebrating');
-    showToast('¡Excelente pausa! 🎉 Descansaste de verdad.');
-    notify('¡Excelente pausa! 🎉', 'Descansaste de verdad. ¡A trabajar con energía!');
+    currentState = 'celebrating'; showState('celebrating');
+    showToast('🎉 ¡Excelente pausa! Descansaste de verdad');
+    pushNotif('¡Excelente pausa! 🎉', 'Descansaste de verdad. ¡A trabajar!');
     setTimeout(() => {
-      setState('working');
-      isBreak = false; remaining = workMins * 60;
-      updateDisplay();
+      currentState = 'working'; showState('working');
+      isBreak = false; remaining = workMins * 60; updateDisplay();
       document.getElementById('btnPlay').disabled  = false;
       document.getElementById('btnPause').disabled = true;
     }, 4000);
   } else {
-    setState('working');
-    showToast('Pausa terminada 😔 No descansaste bien…');
-    notify('Pausa terminada 😔', 'Intenta alejarte en la próxima pausa.');
-    isBreak = false; remaining = workMins * 60;
-    updateDisplay();
+    currentState = 'working'; showState('working');
+    showToast('😔 Pausa terminada. No descansaste bien…');
+    pushNotif('Pausa terminada 😔', 'Intenta alejarte en la próxima pausa.');
+    isBreak = false; remaining = workMins * 60; updateDisplay();
     document.getElementById('btnPlay').disabled  = false;
     document.getElementById('btnPause').disabled = true;
   }
 }
 
-// ── Activity monitor ───────────────────────────────────────────────────────
-const INACT_THRESHOLD = 4000;
+// ── Activity monitor ──────────────────────────────────────────────────────
 let lastActivity = Date.now(), isResting = false, actInterval = null;
 
 function startActivityMonitor() {
   lastActivity = Date.now(); isResting = false;
-  ['mousemove','keydown','click','touchstart'].forEach(e => document.addEventListener(e, onActivity));
+  ['mousemove','keydown','click','touchstart','scroll'].forEach(e => document.addEventListener(e, onActivity));
   actInterval = setInterval(() => {
-    const elapsed = Date.now() - lastActivity;
-    if (elapsed < INACT_THRESHOLD) {
+    const idle = Date.now() - lastActivity;
+    if (idle < INACT_MS) {
       if (isResting && currentState === 'resting') {
-        isResting = false;
-        setState('tired');
-        showToast('¡Hey, necesito descansar! 😩');
-        notify('¡Hey, necesito descansar! 😩', 'Detecté actividad. Aléjate para que pueda recuperarme.');
+        isResting = false; currentState = 'tired'; showState('tired');
+        showToast('😩 ¡Hey, necesito descansar!');
+        pushNotif('¡Hey, necesito descansar! 😩', 'Detecté actividad. Aléjate para recuperarme.');
       }
     } else {
       if (!isResting && currentState === 'tired') {
-        isResting = true;
-        setState('resting');
-        showToast('Descansando 😴 ¡Sigue así!');
-        notify('Descansando 😴', 'Bien, detecté que te alejaste.');
+        isResting = true; currentState = 'resting'; showState('resting');
+        showToast('😴 Descansando. ¡Sigue así!');
+        pushNotif('Descansando 😴', 'Detecté que te alejaste. ¡Sigue así!');
       }
     }
   }, 500);
@@ -510,80 +405,64 @@ function startActivityMonitor() {
 
 function stopActivityMonitor() {
   clearInterval(actInterval);
-  ['mousemove','keydown','click','touchstart'].forEach(e => document.removeEventListener(e, onActivity));
+  ['mousemove','keydown','click','touchstart','scroll'].forEach(e => document.removeEventListener(e, onActivity));
 }
 
 function onActivity() { lastActivity = Date.now(); }
 
 // ── Inactivity bar ────────────────────────────────────────────────────────
-let inactInterval = null, inactProgress = 0;
+let inactInterval = null, inactPct = 0;
 function startInactBar() {
-  inactProgress = 0;
-  document.getElementById('inactFill').style.width = '0%';
+  inactPct = 0; document.getElementById('inactFill').style.width = '0%';
   clearInterval(inactInterval);
   inactInterval = setInterval(() => {
-    inactProgress = Math.min(100, inactProgress + 2);
-    document.getElementById('inactFill').style.width = inactProgress + '%';
-    if (inactProgress >= 100) clearInterval(inactInterval);
+    inactPct = Math.min(100, inactPct + 2);
+    document.getElementById('inactFill').style.width = inactPct + '%';
+    if (inactPct >= 100) clearInterval(inactInterval);
   }, 80);
 }
 function stopInactBar() { clearInterval(inactInterval); }
 
 // ── Toast ─────────────────────────────────────────────────────────────────
-let toastTimeout = null;
+let toastTimer = null;
 function showToast(msg) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(toastTimeout);
-  toastTimeout = setTimeout(() => t.classList.remove('show'), 3500);
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
 }
 
 // ── Notifications ─────────────────────────────────────────────────────────
-function notify(title, body) {
+function pushNotif(title, body) {
   if (Notification.permission === 'granted') new Notification(title, { body });
 }
 function requestNotifPerm() {
   Notification.requestPermission().then(p => {
-    if (p === 'granted') {
-      document.getElementById('permBanner').style.display = 'none';
-      showToast('Notificaciones activadas ✓');
-    }
+    if (p === 'granted') { document.getElementById('permBanner').style.display = 'none'; showToast('✓ Notificaciones activadas'); }
   });
 }
 if (Notification.permission === 'granted') document.getElementById('permBanner').style.display = 'none';
 
 // ── Settings ──────────────────────────────────────────────────────────────
-document.getElementById('btnConfig').addEventListener('click', () => {
-  document.getElementById('settingsPanel').classList.toggle('open');
-});
-document.getElementById('slWork').addEventListener('input', e => {
-  document.getElementById('valWork').textContent = e.target.value + ' min';
-});
-document.getElementById('slBreak').addEventListener('input', e => {
-  document.getElementById('valBreak').textContent = e.target.value + ' min';
-});
+document.getElementById('btnConfig').addEventListener('click', () => document.getElementById('settingsPanel').classList.toggle('open'));
+document.getElementById('slWork').addEventListener('input',  e => { document.getElementById('valWork').textContent  = e.target.value + ' min'; });
+document.getElementById('slBreak').addEventListener('input', e => { document.getElementById('valBreak').textContent = e.target.value + ' min'; });
 document.getElementById('btnSave').addEventListener('click', () => {
   workMins  = parseInt(document.getElementById('slWork').value);
   breakMins = parseInt(document.getElementById('slBreak').value);
   if (!running) { remaining = workMins * 60; updateDisplay(); }
   document.getElementById('settingsPanel').classList.remove('open');
-  showToast('Configuración guardada ✓');
+  showToast('✓ Configuración guardada');
 });
 
 // ── Button wiring ─────────────────────────────────────────────────────────
-document.getElementById('btnPlay').addEventListener('click', startTimer);
+document.getElementById('btnPlay').addEventListener('click',  startTimer);
 document.getElementById('btnPause').addEventListener('click', pauseTimer);
 document.getElementById('btnReset').addEventListener('click', resetTimer);
 
 // ── Init ──────────────────────────────────────────────────────────────────
 updateDisplay();
-// Always show PNG first, then attempt video
-petImg.style.display = 'block';
-petVideo.style.display = 'none';
-setState('working');
-// Try video after short delay
-setTimeout(() => tryStartVideo('working'), 300);
+showState('working');
 </script>
 </body>
 </html>
