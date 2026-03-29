@@ -49,19 +49,29 @@
     display: none;
   }
 
+  /* Pet wrapper with soft background pill */
   .pet-frame {
-    width: 240px; height: 240px;
+    position: relative;
+    width: 240px;
+    height: 240px;
     border-radius: 40px;
     background: rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.08);
-    display: flex; align-items: center; justify-content: center;
-    overflow: hidden; transition: background 0.5s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transition: background 0.5s;
   }
   .state-working  .pet-frame { background: rgba(92,219,149,0.08);  border-color: rgba(92,219,149,0.15); }
   .state-tired    .pet-frame { background: rgba(232,69,69,0.08);   border-color: rgba(232,69,69,0.15); }
   .state-resting  .pet-frame { background: rgba(106,142,174,0.08); border-color: rgba(106,142,174,0.15); }
   .state-celebrating .pet-frame { background: rgba(255,209,102,0.08); border-color: rgba(255,209,102,0.15); }
-  #petCanvas { width: 220px; height: 220px; }
+
+  #petCanvas {
+    width: 220px;
+    height: 220px;
+  }
 
   /* Status badge */
   .status-badge {
@@ -169,7 +179,7 @@
     background: rgba(255,255,255,0.04);
     border: 1px solid rgba(255,255,255,0.1);
     border-radius: 16px;
-    padding: 20px 24px;
+    padding: 16px 20px;
     width: 100%;
     display: none;
   }
@@ -179,19 +189,19 @@
     letter-spacing: 2px;
     text-transform: uppercase;
     color: rgba(255,255,255,0.3);
-    margin-bottom: 16px;
+    margin-bottom: 12px;
   }
   .settings-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
   .settings-row label { font-size: 13px; color: rgba(255,255,255,0.7); }
-  .settings-row input[type=range] { width: 120px; accent-color: #5C7AEA; }
+  .settings-row input[type=range] { width: 110px; accent-color: #5C7AEA; }
   .settings-val { font-size: 13px; color: #fff; min-width: 40px; text-align: right; }
   .settings-save {
-    width: 100%; margin-top: 8px; padding: 9px;
+    width: 100%; margin-top: 6px; padding: 8px;
     background: #5C7AEA; border: none; border-radius: 10px;
     color: #fff; font-size: 13px; cursor: pointer;
   }
@@ -228,19 +238,18 @@
 </head>
 <body>
 
-<!-- Hidden videos for each state -->
-<div id="videoContainer">
-  <video id="vid-working"     src="videos/working.mp4"     loop muted playsinline preload="auto"></video>
-  <video id="vid-tired"       src="videos/tired.mp4"       loop muted playsinline preload="auto"></video>
-  <video id="vid-resting"     src="videos/resting.mp4"     loop muted playsinline preload="auto"></video>
-  <video id="vid-celebrating" src="videos/celebrating.mp4" loop muted playsinline preload="auto"></video>
-</div>
+<!-- Videos loaded dynamically -->
 
 <div class="app" id="app">
   <div class="title">Pomodoro Pet</div>
 
-  <div class="pet-frame">
-    <canvas id="petCanvas" width="220" height="220"></canvas>
+  <div class="pet-frame" id="petFrame">
+    <video id="petVideo" loop muted playsinline webkit-playsinline preload="auto"></video>
+    <img id="petImg" class="pet-img" src="assets/working.png" alt="pet">
+    <div class="tap-overlay hidden" id="tapOverlay" onclick="handleTap()">
+      <span class="tap-icon">🐾</span>
+      <span>Toca para iniciar</span>
+    </div>
   </div>
 
   <div class="status-badge" id="statusBadge">
@@ -297,47 +306,59 @@ const STATE_LABELS = {
   celebrating: 'Celebrando',
 };
 
-// ── Canvas renderer with white bg removal ──────────────────────────────────
-const canvas  = document.getElementById('petCanvas');
-const ctx     = canvas.getContext('2d', { willReadFrequently: true });
-let   currentVideo = document.getElementById('vid-working');
-let   rafId   = null;
+// ── Video / image renderer ────────────────────────────────────────────────
+const petVideo = document.getElementById('petVideo');
+const petImg   = document.getElementById('petImg');
+const tapOverlay = document.getElementById('tapOverlay');
+let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+let videoEnabled = false;
 
-function removeWhiteBg() {
-  const w = canvas.width, h = canvas.height;
-  ctx.drawImage(currentVideo, 0, 0, w, h);
+// PNG sprite frames for fallback (mobile)
+const SPRITE_FRAMES = { working: 12, tired: 12, resting: 12, celebrating: 12 };
+let spriteCanvas = null, spriteCtx = null, spriteSheet = null;
+let spriteFrame = 0, spriteTotal = 12, spriteInterval = null;
 
-  const img  = ctx.getImageData(0, 0, w, h);
-  const data = img.data;
-
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i], g = data[i+1], b = data[i+2];
-    const brightness = (r + g + b) / 3;
-    if (brightness > 235) {
-      data[i+3] = 0;              // fully transparent
-    } else if (brightness > 210) {
-      data[i+3] = Math.round(((255 - brightness) / 45) * 255); // fade edges
-    }
-  }
-  ctx.putImageData(img, 0, 0);
+function initSpriteFallback(stateName) {
+  petVideo.style.display = 'none';
+  petImg.style.display = 'block';
+  petImg.src = `assets/${stateName}.png`;
+  // Animate through frames using background-position if needed
+  // For simplicity just show static image on mobile
 }
 
-function renderLoop() {
-  if (currentVideo && !currentVideo.paused && !currentVideo.ended) {
-    removeWhiteBg();
+function tryStartVideo(stateName) {
+  petVideo.src = `videos/${stateName}.mp4`;
+  petVideo.load();
+  const promise = petVideo.play();
+  if (promise !== undefined) {
+    promise.then(() => {
+      videoEnabled = true;
+      petVideo.style.display = 'block';
+      petImg.style.display = 'none';
+      tapOverlay.classList.add('hidden');
+    }).catch(() => {
+      // Autoplay blocked — show tap overlay on mobile
+      petVideo.style.display = 'block';
+      petImg.style.display = 'none';
+      if (isMobile) tapOverlay.classList.remove('hidden');
+    });
   }
-  rafId = requestAnimationFrame(renderLoop);
+}
+
+function handleTap() {
+  tapOverlay.classList.add('hidden');
+  petVideo.play().then(() => { videoEnabled = true; }).catch(() => {});
 }
 
 function switchVideo(stateName) {
-  // Pause all
-  ['working','tired','resting','celebrating'].forEach(s => {
-    const v = document.getElementById(`vid-${s}`);
-    v.pause();
-    v.currentTime = 0;
-  });
-  currentVideo = document.getElementById(`vid-${stateName}`);
-  currentVideo.play().catch(() => {});
+  petImg.src = `assets/${stateName}.png`;
+  petVideo.src = `videos/${stateName}.mp4`;
+  petVideo.load();
+  if (videoEnabled || !isMobile) {
+    petVideo.play().catch(() => {
+      if (isMobile) tapOverlay.classList.remove('hidden');
+    });
+  }
 }
 
 // ── App state machine ──────────────────────────────────────────────────────
@@ -557,8 +578,12 @@ document.getElementById('btnReset').addEventListener('click', resetTimer);
 
 // ── Init ──────────────────────────────────────────────────────────────────
 updateDisplay();
+// Always show PNG first, then attempt video
+petImg.style.display = 'block';
+petVideo.style.display = 'none';
 setState('working');
-renderLoop();
+// Try video after short delay
+setTimeout(() => tryStartVideo('working'), 300);
 </script>
 </body>
 </html>
